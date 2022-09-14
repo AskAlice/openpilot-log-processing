@@ -6,11 +6,14 @@ from tqdm import tqdm
 
 # Will cleanup original files
 PRODUCTION = False
-BASE_PATH = r"/mnt/c/temp/nyc_drive"
+BASE_PATH = r"/mnt/c/temp/comma/realdata"
+REUSE_FILES = True
+MIN_VIDEO_LENGTH_MINS = 2 # minute video length minimum, must be > this many minutes long
+COMMA_IP = '192.168.1.100'
 
 
 def main():
-    for folder in tqdm(list(os.walk(r"/mnt/c/temp/nyc_drive")), desc='Decompressing'):
+    for folder in tqdm(list(os.walk(BASE_PATH)), desc='Decompressing'):
         continue  ## REMOVE ME
         if len(folder[2]):
             for file in folder[2]:
@@ -19,7 +22,7 @@ def main():
                         subprocess.call(["bzip2", f'-d{"" if PRODUCTION else "k"}', os.path.join(folder[0], file)],
                                         stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
-    for folder in tqdm(list(os.walk(r"/mnt/c/temp/nyc_drive")), desc='Decoding'):
+    for folder in tqdm(list(os.walk(BASE_PATH)), desc='Decoding'):
         if len(folder[2]):
             for file in folder[2]:
                 route = folder[0][len(BASE_PATH) + 1:len(BASE_PATH) + 20 + 1]

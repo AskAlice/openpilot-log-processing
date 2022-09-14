@@ -1,5 +1,7 @@
 tqdm
 pycapnp
-google-api-python-client
+google-api-python-client==2.49.0
 google-auth-httplib2
 google-auth-oauthlib
+sysrsync
+python-dateutil==2.8.2
