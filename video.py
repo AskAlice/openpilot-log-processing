@@ -2,7 +2,6 @@ import os
 import random
 import re
 import time
-from datetime import datetime
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -12,39 +11,51 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 from dateutil.parser import *
 
-from main import BASE_PATH, PRODUCTION, REUSE_FILES, MIN_VIDEO_LENGTH_MINS
+from main import BASE_PATH, PRODUCTION, REUSE_FILES, MIN_VIDEO_LENGTH_MINS, get_unix_time_from_route
 
 OAUTH_SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
 
 
 # ffmpeg -i 2022-05-14--01-54-24-ecamera.mp4 -i 2022-05-14--01-54-24-fcamera.mp4 -filter_complex "[0:v]crop=iw:400:50:400[v0];[v0][1:v]vstack" test.mp4
 def main():
-    youtube = google_auth()
+    # youtube = google_auth()
 
     camera_views = ['e', 'f']
     camera_filenames = get_filenames(camera_views)
+    new_files = {}
     for route in camera_filenames:
+        # make sure that it is a valid route, and the datetime can be parsed from it
+        try:
+            get_unix_time_from_route(route)
+        except:
+            print('skipping', route)
+            continue
+
+        new_files[route] = {}
         # if not is_route_long_enough(route, camera_filenames, camera_views):
         #     continue
 
         for camera_prefix in camera_filenames[route]:
             print(f'---- {route} {camera_prefix}camera ----')
-            new_video_mp4 = merge_videos(camera_prefix, route, camera_filenames)
-            return
+            new_files[route][f'{camera_prefix}_merge'] = merge_videos(camera_prefix, route, camera_filenames)
 
-            print(f'---- uploading ----')
-            continue
-            initialize_upload(youtube, {
-                'file': new_video_mp4,
-                'title': f'{route} Dashcam {camera_prefix}camera',
-                'description': f'Dashcam video uploaded from a comma 3.',
-                'category': '1',
-                'keywords': 'dashcam, car, self driving',
-                'privacyStatus': 'private',
-                'selfDeclaredMadeForKids': True
-            })
-            # 930 pixels (width) to work with to render gauges and stuff
-            # Compress to 720p or something
+            print(new_files)
+            # return
+
+        new_files[route]['stacked'] = stack_videos(route, new_files[route]['e_merge'], new_files[route]['f_merge'])
+        continue
+        print(f'---- uploading ----')
+        initialize_upload(youtube, {
+            'file': new_video_mp4,
+            'title': f'{route} Dashcam {camera_prefix}camera',
+            'description': f'Dashcam video uploaded from a comma 3.',
+            'category': '1',
+            'keywords': 'dashcam, car, self driving',
+            'privacyStatus': 'private',
+            'selfDeclaredMadeForKids': True
+        })
+        # 930 pixels (width) to work with to render gauges and stuff
+        # Compress to 720p or something
 
 
 def is_route_long_enough(route, camera_filenames, camera_views):
@@ -83,27 +94,39 @@ def get_filenames(camera_views):
 def merge_videos(camera_prefix, route, camera_filenames):
     start_time = get_unix_time_from_route(route)
     print(start_time)
-    return
-    file_path_hevc = f"{os.path.join(BASE_PATH, route)}-{camera_prefix}camera.hevc"
-    file_path_mp4 = f"{os.path.join(BASE_PATH, route)}-{camera_prefix}camera.mp4"
+    # return
+    filepath_hevc = f"{os.path.join(BASE_PATH, route)}-{camera_prefix}camera.hevc"
+    filepath_mp4 = f"{os.path.join(BASE_PATH, route)}-{camera_prefix}camera.mp4"
 
-    if REUSE_FILES and (os.path.exists(file_path_mp4) and os.path.getsize(file_path_mp4) > 0):
-        print(file_path_mp4, 'already exists and is not empty, skipping')
-        return file_path_mp4
+    if REUSE_FILES and (os.path.exists(filepath_mp4) and os.path.getsize(filepath_mp4) > 0):
+        print(filepath_mp4, 'already exists and is not empty, skipping')
+        return filepath_mp4
 
     os.system(
-        f"cat {' '.join(camera_filenames[route][camera_prefix])} > {file_path_hevc};"  # concat hevc files (step 1)
-        f"ffmpeg -r 20 -i {file_path_hevc} -c copy {file_path_mp4};"  # repackage as mp4
-        f"rm {file_path_hevc}")  # remove concat'ed hevc file from step 1
+        f"cat {' '.join(camera_filenames[route][camera_prefix])} > {filepath_hevc};"  # concat hevc files (step 1)
+        f"ffmpeg -r 30 -i {filepath_hevc} -c copy {filepath_mp4};"  # repackage as mp4
+        f"rm {filepath_hevc}")  # remove concat'ed hevc file from step 1
     if PRODUCTION:  # Remove original files only if production
         os.system(f"rm {' '.join(camera_filenames[route][camera_prefix])}")
-    return file_path_mp4
+    return filepath_mp4
 
 
-def get_unix_time_from_route(route):
-    print(route)
-    start_time = datetime.strptime(route, '%Y-%m-%d--%H-%M-%S')
-    print(start_time.isoformat())
+def stack_videos(route, ecamera_filename, fcamera_filename):
+    start_time = get_unix_time_from_route(route)
+    print(start_time)
+    filepath_stacked = f"{os.path.join(BASE_PATH, route)}-stacked.mp4"
+
+    if REUSE_FILES and (os.path.exists(filepath_stacked) and os.path.getsize(filepath_stacked) > 0):
+        print(filepath_stacked, 'already exists and is not empty, skipping')
+        return filepath_stacked
+
+    os.system(
+        f'ffmpeg -i {ecamera_filename} -i {fcamera_filename} -preset fast -filter_complex "[0:v]crop=iw:400:50:400[v0];[v0][1:v]vstack" {filepath_stacked}')
+    if PRODUCTION:  # Remove original files only if production
+        os.system(f"rm {ecamera_filename} {fcamera_filename}")
+    return filepath_stacked
+
+
 
 
 def google_auth():
