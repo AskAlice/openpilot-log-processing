@@ -1,0 +1,6 @@
+version: "3.1"
+services:
+  video:
+    build: .
+    volumes:
+      - /media/bscholer/data4/comma_temp:/data

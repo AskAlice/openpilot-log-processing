@@ -11,7 +11,7 @@ log_capnp = capnp.load('log.capnp')
 
 # Will clean up original files
 PRODUCTION = False
-BASE_PATH = r"/mnt/c/temp/comma/realdata"
+BASE_PATH = r"/data/realdata"
 REUSE_FILES = True
 MIN_VIDEO_LENGTH_MINS = 2  # minute video length minimum, must be > this many minutes long
 COMMA_IP = '192.168.1.100'

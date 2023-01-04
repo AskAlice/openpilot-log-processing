@@ -104,8 +104,9 @@ def merge_videos(camera_prefix, route, camera_filenames):
 
     os.system(
         f"cat {' '.join(camera_filenames[route][camera_prefix])} > {filepath_hevc};"  # concat hevc files (step 1)
-        f"ffmpeg -r 30 -i {filepath_hevc} -c copy {filepath_mp4};"  # repackage as mp4
-        f"rm {filepath_hevc}")  # remove concat'ed hevc file from step 1
+        f"ffmpeg -framerate 20 -i {filepath_hevc} -c copy -map 0 -r 20 -tag:v hvc1 {filepath_mp4};"  # repackage as mp4
+        f"rm {filepath_hevc}"  # remove concat'ed hevc file from step 1
+        )
     if PRODUCTION:  # Remove original files only if production
         os.system(f"rm {' '.join(camera_filenames[route][camera_prefix])}")
     return filepath_mp4
@@ -121,7 +122,7 @@ def stack_videos(route, ecamera_filename, fcamera_filename):
         return filepath_stacked
 
     os.system(
-        f'ffmpeg -i {ecamera_filename} -i {fcamera_filename} -preset fast -filter_complex "[0:v]crop=iw:400:50:400[v0];[v0][1:v]vstack" {filepath_stacked}')
+        f'ffmpeg -r 20 -i {ecamera_filename} -i {fcamera_filename} -preset fast -filter_complex "[0:v]crop=iw:400:50:400[v0];[v0][1:v]vstack" {filepath_stacked}')
     if PRODUCTION:  # Remove original files only if production
         os.system(f"rm {ecamera_filename} {fcamera_filename}")
     return filepath_stacked

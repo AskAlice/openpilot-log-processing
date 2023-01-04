@@ -13,8 +13,8 @@ COPY requirements.txt ./
 
 RUN pip install --root-user-action=ignore -r requirements.txt
 
-COPY oauth_secret.json ./
-COPY token.json ./
+#COPY oauth_secret.json ./
+#COPY token.json ./
 COPY log.capnp ./
 COPY video.py ./
 COPY main.py ./
